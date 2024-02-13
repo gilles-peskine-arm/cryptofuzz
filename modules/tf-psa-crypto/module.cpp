@@ -163,6 +163,49 @@ std::optional<component::Digest> TF_PSA_Crypto::OpDigest(operation::Digest& op) 
                                            md, sizeof(md), &length));
         }
 
+        unsigned char verify_md[PSA_HASH_LENGTH(alg) + 1];
+        memcpy(verify_md, md, length);
+        verify_md[length] = 0;
+        size_t verify_length = length;
+        psa_status_t expected_verify_status = PSA_SUCCESS;
+        /* After a one-shot computation, do a multi-part verification,
+         * and vice versa. */
+        bool verify_multipart = !multipart;
+
+        uint8_t perturbation = ds.Get<uint8_t>();
+        /* Maybe corrupt one bit or change the length. */
+        if (perturbation < length) {
+            verify_md[perturbation] ^= 1;
+            expected_verify_status = PSA_ERROR_INVALID_SIGNATURE;
+        } else if (perturbation < 2 * length + 1) {
+            verify_length = perturbation - length; // 0..length+1
+            if (verify_length != length) {
+                expected_verify_status = PSA_ERROR_INVALID_SIGNATURE;
+            }
+        }
+
+        if (verify_multipart) {
+            TF_PSA_Crypto_detail::HashOperation operation;
+            /* Initialize */
+            util::Multipart parts = util::ToParts(ds, op.cleartext);
+            CF_ASSERT_PSA(operation.setup(alg));
+
+            /* Process */
+            for (const auto& part : parts) {
+                CF_ASSERT_PSA(operation.update(part.first, part.second));
+            }
+
+            /* Finalize */
+            CF_ASSERT_EQ(operation.verify(verify_md, verify_length),
+                         expected_verify_status);
+        } else {
+            /* One-shot computation */
+            CF_ASSERT_EQ(psa_hash_compare(alg,
+                                          op.cleartext.GetPtr(&ds), op.cleartext.GetSize(),
+                                          verify_md, verify_length),
+                         expected_verify_status);
+        }
+
         ret = component::Digest(md, length);
     }
 
