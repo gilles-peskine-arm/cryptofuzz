@@ -10,6 +10,183 @@ namespace module {
 
 #define CF_ASSERT_PSA(expr) CF_ASSERT_EQ(expr, PSA_SUCCESS)
 
+static bool is_cipher_consistent(SymmetricCipher cipher) {
+    /* For some reason, modules can receive a cipher type that's
+     * inconsistent with the key length, even though the module does not
+     * have an interface to report that it correctly rejected an
+     * invalid length. */
+    switch (cipher.cipherType) {
+    case CF_CIPHER("AES"):
+        switch (cipher.key.GetSize()) {
+        case 16:
+        case 24:
+        case 32:
+            return true;
+        default:
+            return false;
+        }
+
+    case CF_CIPHER("AES_128_CBC"):
+    case CF_CIPHER("AES_128_CBC_HMAC_SHA1"):
+    case CF_CIPHER("AES_128_CBC_HMAC_SHA256"):
+    case CF_CIPHER("AES_128_CCM"):
+    case CF_CIPHER("AES_128_CFB"):
+    case CF_CIPHER("AES_128_CFB1"):
+    case CF_CIPHER("AES_128_CFB128"):
+    case CF_CIPHER("AES_128_CFB8"):
+    case CF_CIPHER("AES_128_CTR"):
+    case CF_CIPHER("AES_128_ECB"):
+    case CF_CIPHER("AES_128_GCM"):
+    case CF_CIPHER("AES_128_OCB"):
+    case CF_CIPHER("AES_128_OFB"):
+    case CF_CIPHER("AES_128_WRAP"):
+    case CF_CIPHER("AES_128_WRAP_PAD"):
+        return cipher.key.GetSize() == 16;
+
+    case CF_CIPHER("AES_128_XTS"):
+        return cipher.key.GetSize() == 32;
+
+    case CF_CIPHER("AES_192_CBC"):
+    case CF_CIPHER("AES_192_CCM"):
+    case CF_CIPHER("AES_192_CFB"):
+    case CF_CIPHER("AES_192_CFB1"):
+    case CF_CIPHER("AES_192_CFB128"):
+    case CF_CIPHER("AES_192_CFB8"):
+    case CF_CIPHER("AES_192_CTR"):
+    case CF_CIPHER("AES_192_ECB"):
+    case CF_CIPHER("AES_192_GCM"):
+    case CF_CIPHER("AES_192_OFB"):
+    case CF_CIPHER("AES_192_WRAP"):
+    case CF_CIPHER("AES_192_WRAP_PAD"):
+        return cipher.key.GetSize() == 24;
+
+    case CF_CIPHER("AES_192_XTS"):
+        return cipher.key.GetSize() == 48;
+
+    case CF_CIPHER("AES_256_CBC"):
+    case CF_CIPHER("AES_256_CBC_HMAC_SHA1"):
+    case CF_CIPHER("AES_256_CCM"):
+    case CF_CIPHER("AES_256_CFB"):
+    case CF_CIPHER("AES_256_CFB1"):
+    case CF_CIPHER("AES_256_CFB128"):
+    case CF_CIPHER("AES_256_CFB8"):
+    case CF_CIPHER("AES_256_CTR"):
+    case CF_CIPHER("AES_256_ECB"):
+    case CF_CIPHER("AES_256_GCM"):
+    case CF_CIPHER("AES_256_OCB"):
+    case CF_CIPHER("AES_256_OFB"):
+    case CF_CIPHER("AES_256_WRAP"):
+    case CF_CIPHER("AES_256_WRAP_PAD"):
+        return cipher.key.GetSize() == 32;
+
+    case CF_CIPHER("AES_256_XTS"):
+        return cipher.key.GetSize() == 64;
+
+    case CF_CIPHER("ARIA_128_CBC"):
+    case CF_CIPHER("ARIA_128_CCM"):
+    case CF_CIPHER("ARIA_128_CFB"):
+    case CF_CIPHER("ARIA_128_CFB1"):
+    case CF_CIPHER("ARIA_128_CFB128"):
+    case CF_CIPHER("ARIA_128_CFB8"):
+    case CF_CIPHER("ARIA_128_CTR"):
+    case CF_CIPHER("ARIA_128_ECB"):
+    case CF_CIPHER("ARIA_128_GCM"):
+    case CF_CIPHER("ARIA_128_OFB"):
+        return cipher.key.GetSize() == 16;
+
+    case CF_CIPHER("ARIA_192_CBC"):
+    case CF_CIPHER("ARIA_192_CCM"):
+    case CF_CIPHER("ARIA_192_CFB"):
+    case CF_CIPHER("ARIA_192_CFB1"):
+    case CF_CIPHER("ARIA_192_CFB128"):
+    case CF_CIPHER("ARIA_192_CFB8"):
+    case CF_CIPHER("ARIA_192_CTR"):
+    case CF_CIPHER("ARIA_192_ECB"):
+    case CF_CIPHER("ARIA_192_GCM"):
+    case CF_CIPHER("ARIA_192_OFB"):
+        return cipher.key.GetSize() == 24;
+
+    case CF_CIPHER("ARIA_256_CBC"):
+    case CF_CIPHER("ARIA_256_CCM"):
+    case CF_CIPHER("ARIA_256_CFB"):
+    case CF_CIPHER("ARIA_256_CFB1"):
+    case CF_CIPHER("ARIA_256_CFB128"):
+    case CF_CIPHER("ARIA_256_CFB8"):
+    case CF_CIPHER("ARIA_256_CTR"):
+    case CF_CIPHER("ARIA_256_ECB"):
+    case CF_CIPHER("ARIA_256_GCM"):
+    case CF_CIPHER("ARIA_256_OFB"):
+        return cipher.key.GetSize() == 32;
+
+    case CF_CIPHER("CAMELLIA_128_CBC"):
+    case CF_CIPHER("CAMELLIA_128_CFB"):
+    case CF_CIPHER("CAMELLIA_128_CFB1"):
+    case CF_CIPHER("CAMELLIA_128_CFB128"):
+    case CF_CIPHER("CAMELLIA_128_CFB8"):
+    case CF_CIPHER("CAMELLIA_128_CTR"):
+    case CF_CIPHER("CAMELLIA_128_ECB"):
+    case CF_CIPHER("CAMELLIA_128_GCM"):
+    case CF_CIPHER("CAMELLIA_128_OFB"):
+        return cipher.key.GetSize() == 16;
+
+    case CF_CIPHER("CAMELLIA_192_CBC"):
+    case CF_CIPHER("CAMELLIA_192_CFB"):
+    case CF_CIPHER("CAMELLIA_192_CFB1"):
+    case CF_CIPHER("CAMELLIA_192_CFB128"):
+    case CF_CIPHER("CAMELLIA_192_CFB8"):
+    case CF_CIPHER("CAMELLIA_192_CTR"):
+    case CF_CIPHER("CAMELLIA_192_ECB"):
+    case CF_CIPHER("CAMELLIA_192_GCM"):
+    case CF_CIPHER("CAMELLIA_192_OFB"):
+        return cipher.key.GetSize() == 24;
+
+    case CF_CIPHER("CAMELLIA_256_CBC"):
+    case CF_CIPHER("CAMELLIA_256_CFB"):
+    case CF_CIPHER("CAMELLIA_256_CFB1"):
+    case CF_CIPHER("CAMELLIA_256_CFB128"):
+    case CF_CIPHER("CAMELLIA_256_CFB8"):
+    case CF_CIPHER("CAMELLIA_256_CTR"):
+    case CF_CIPHER("CAMELLIA_256_ECB"):
+    case CF_CIPHER("CAMELLIA_256_GCM"):
+    case CF_CIPHER("CAMELLIA_256_OFB"):
+        return cipher.key.GetSize() == 32;
+
+    case CF_CIPHER("CHACHA20"):
+    case CF_CIPHER("CHACHA20_POLY1305"):
+        return cipher.key.GetSize() == 32;
+
+    case CF_CIPHER("DES_CBC"):
+    case CF_CIPHER("DES_CFB"):
+    case CF_CIPHER("DES_CFB1"):
+    case CF_CIPHER("DES_CFB8"):
+    case CF_CIPHER("DES_CTR"):
+    case CF_CIPHER("DES_ECB"):
+    case CF_CIPHER("DES_OFB"):
+        return cipher.key.GetSize() == 8;
+
+    case CF_CIPHER("DES_EDE"):
+    case CF_CIPHER("DES_EDE_CBC"):
+    case CF_CIPHER("DES_EDE_CFB"):
+    case CF_CIPHER("DES_EDE_ECB"):
+    case CF_CIPHER("DES_EDE_OFB"):
+        return cipher.key.GetSize() == 16;
+
+    case CF_CIPHER("DES3_CBC"):
+    case CF_CIPHER("DES_EDE3"):
+    case CF_CIPHER("DES_EDE3_CBC"):
+    case CF_CIPHER("DES_EDE3_CFB"):
+    case CF_CIPHER("DES_EDE3_CFB1"):
+    case CF_CIPHER("DES_EDE3_CFB8"):
+    case CF_CIPHER("DES_EDE3_ECB"):
+    case CF_CIPHER("DES_EDE3_OFB"):
+    case CF_CIPHER("DES_EDE3_WRAP"):
+        return cipher.key.GetSize() == 24;
+
+    default:
+        return true;
+    }
+}
+
 namespace TF_PSA_Crypto_detail {
     Datasource* ds;
 
@@ -384,6 +561,8 @@ std::optional<component::MAC> TF_PSA_Crypto::OpCMAC(operation::CMAC& op) {
     std::optional<component::MAC> ret = std::nullopt;
     Datasource ds(op.modifier.GetPtr(), op.modifier.GetSize());
     TF_PSA_Crypto_detail::SetGlobalDs(&ds);
+
+    CF_CHECK(is_cipher_consistent(op.cipher));
 
     psa_key_type_t const key_type =
         TF_PSA_Crypto_detail::to_psa_key_type_t(op.cipher.cipherType);

@@ -14,6 +14,11 @@ class TF_PSA_Crypto : public Module {
         std::optional<component::Digest> OpDigest(operation::Digest& op) override;
         std::optional<component::MAC> OpHMAC(operation::HMAC& op) override;
         std::optional<component::MAC> OpCMAC(operation::CMAC& op) override;
+        // std::optional<component::Ciphertext> OpSymmetricEncrypt(operation::SymmetricEncrypt& op);
+        // std::optional<component::Cleartext> OpSymmetricDecrypt(operation::SymmetricDecrypt& op);
+        // std::optional<component::Key> OpKDF_HKDF(operation::KDF_HKDF& op);
+        // std::optional<component::Key> OpKDF_TLS1_PRF(operation::KDF_TLS1_PRF& op);
+        // std::optional<component::Key> OpKDF_PBKDF2(operation::KDF_PBKDF2& op);
 };
 
 } /* namespace module */
