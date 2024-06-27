@@ -109,6 +109,30 @@ Multipart ToParts(fuzzing::datasource::Datasource& ds, const uint8_t* data, cons
     return ret;
 }
 
+Multipart ToParts(fuzzing::datasource::Datasource& ds, std::vector<uint8_t>& buffer, const size_t blocksize) {
+    return ToParts(ds, buffer.data(), buffer.size(), blocksize);
+}
+
+Multipart ToParts(fuzzing::datasource::Datasource& ds, Buffer& buffer, const size_t blocksize) {
+    return ToParts(ds, buffer.GetPtr(), buffer.GetSize(), blocksize);
+}
+
+Multipart ToParts(fuzzing::datasource::Datasource& ds, uint8_t* data, const size_t size, const size_t blocksize) {
+    const bool blocks = blocksize != 0;
+    const auto parts = Split(ds, !blocks ? size : size / blocksize);
+    Multipart ret;
+    size_t curPos = 0;
+    for (auto& p : parts) {
+        const size_t n = !blocks ? p : blocksize * p;
+        ret.push_back({data + curPos, n});
+        curPos += n;
+    }
+    if ( curPos < size ) {
+        ret.push_back({data + curPos, size - curPos});
+    }
+    return ret;
+}
+
 Multipart ToEqualParts(const Buffer& buffer, const size_t partSize) {
     return ToEqualParts(buffer.GetPtr(), buffer.GetSize(), partSize);
 }

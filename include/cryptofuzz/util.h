@@ -58,6 +58,9 @@ Multipart CipherInputTransform(fuzzing::datasource::Datasource& ds, component::S
 Multipart ToParts(fuzzing::datasource::Datasource& ds, const std::vector<uint8_t>& buffer, const size_t blocksize = 0);
 Multipart ToParts(fuzzing::datasource::Datasource& ds, const Buffer& buffer, const size_t blocksize = 0);
 Multipart ToParts(fuzzing::datasource::Datasource& ds, const uint8_t* data, const size_t size, const size_t blocksize = 0);
+Multipart ToParts(fuzzing::datasource::Datasource& ds, std::vector<uint8_t>& buffer, const size_t blocksize = 0);
+Multipart ToParts(fuzzing::datasource::Datasource& ds, Buffer& buffer, const size_t blocksize = 0);
+Multipart ToParts(fuzzing::datasource::Datasource& ds, uint8_t* data, const size_t size, const size_t blocksize = 0);
 Multipart ToEqualParts(const Buffer& buffer, const size_t partSize);
 Multipart ToEqualParts(const uint8_t* data, const size_t size, const size_t partSize);
 std::vector<uint8_t> Pkcs7Pad(std::vector<uint8_t> in, const size_t blocksize);
