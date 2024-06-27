@@ -643,9 +643,12 @@ namespace TF_PSA_Crypto_detail {
             return cap;
         }
 
+        psa_status_t output(uint8_t *out, size_t length) {
+            return psa_key_derivation_output_bytes(&operation, out, length);
+        }
+
         psa_status_t output(std::vector<uint8_t> &out) {
-            return psa_key_derivation_output_bytes(&operation,
-                                                   out.data(), out.size());
+            return output(out.data(), out.size());
         }
     };
 
@@ -1144,11 +1147,10 @@ std::optional<component::Cleartext> TF_PSA_Crypto::OpSymmetricDecrypt(operation:
     return Buffer(output);
 }
 
-static std::optional<component::Key> kdf_common(operation::Operation &op,
+static std::optional<component::Key> kdf_common(Datasource &ds,
                                                 psa_algorithm_t alg,
                                                 const std::vector<TF_PSA_Crypto_detail::KDF_input*> &inputs,
                                                 size_t output_length) {
-    Datasource ds(op.modifier.GetPtr(), op.modifier.GetSize());
     TF_PSA_Crypto_detail::SetGlobalDs(&ds);
     std::optional<component::Key> output_maybe = std::nullopt;
 
@@ -1162,7 +1164,15 @@ static std::optional<component::Key> kdf_common(operation::Operation &op,
 
     {
         auto output = std::vector<uint8_t>(output_length);
-        CF_ASSERT_PSA(operation.output(output));
+        bool const multipart = ds.Get<bool>();
+        if (multipart) {
+            util::Multipart parts = util::ToParts(ds, output);
+            for (auto& part : parts) {
+                CF_ASSERT_PSA(operation.output(part.first, part.second));
+            }
+        } else {
+            CF_ASSERT_PSA(operation.output(output));
+        }
         output_maybe = Buffer(output);
     }
 
@@ -1189,7 +1199,7 @@ std::optional<component::Key> TF_PSA_Crypto::OpKDF_HKDF(operation::KDF_HKDF& op)
     if (extract_then_expand) {
         TF_PSA_Crypto_detail::KDF_input* info = inputs[2];
         inputs.erase(inputs.begin() + 2);
-        result = kdf_common(op, PSA_ALG_HKDF_EXTRACT(hash_alg),
+        result = kdf_common(ds, PSA_ALG_HKDF_EXTRACT(hash_alg),
                             inputs, PSA_HASH_LENGTH(hash_alg));
         if (!result) {
             goto end;
@@ -1201,9 +1211,11 @@ std::optional<component::Key> TF_PSA_Crypto::OpKDF_HKDF(operation::KDF_HKDF& op)
             result->GetConstVectorPtr());
         delete inputs[1];
         inputs[1] = info;
-        result = kdf_common(op, PSA_ALG_HKDF_EXPAND(hash_alg), inputs, op.keySize);
+        result = kdf_common(ds, PSA_ALG_HKDF_EXPAND(hash_alg),
+                            inputs, op.keySize);
     } else {
-        result = kdf_common(op, PSA_ALG_HKDF(hash_alg), inputs, op.keySize);
+        result = kdf_common(ds, PSA_ALG_HKDF(hash_alg),
+                            inputs, op.keySize);
     }
 
 end:
@@ -1215,6 +1227,12 @@ end:
 
 std::optional<component::Key> TF_PSA_Crypto::OpKDF_TLS1_PRF(operation::KDF_TLS1_PRF& op) {
     std::optional<component::Key> result = std::nullopt;
+    Datasource ds(op.modifier.GetPtr(), op.modifier.GetSize());
+    /* Extracting a bit from the datasource here prevents the call to
+     * set multipart in kdf_common from throwing an OutOfData exception.
+     * I have no idea why. */
+    (void) ds.Get<bool>();
+
     const std::vector<TF_PSA_Crypto_detail::KDF_input*> inputs = {
         new TF_PSA_Crypto_detail::KDF_input_bytes(PSA_KEY_DERIVATION_INPUT_SEED, op.seed),
         new TF_PSA_Crypto_detail::KDF_input_bytes(PSA_KEY_DERIVATION_INPUT_SECRET, op.secret),
@@ -1227,7 +1245,8 @@ std::optional<component::Key> TF_PSA_Crypto::OpKDF_TLS1_PRF(operation::KDF_TLS1_
     /* Skip unknown or rejected algorithms */
     CF_CHECK_TRUE(hash_alg == PSA_ALG_SHA_256 || hash_alg == PSA_ALG_SHA_384);
 
-    result = kdf_common(op, PSA_ALG_TLS12_PRF(hash_alg), inputs, op.keySize);
+    result = kdf_common(ds, PSA_ALG_TLS12_PRF(hash_alg),
+                        inputs, op.keySize);
 
 end:
     for (auto inp : inputs) {
@@ -1238,6 +1257,12 @@ end:
 
 std::optional<component::Key> TF_PSA_Crypto::OpKDF_PBKDF2(operation::KDF_PBKDF2& op) {
     std::optional<component::Key> result = std::nullopt;
+    Datasource ds(op.modifier.GetPtr(), op.modifier.GetSize());
+    /* Extracting a bit from the datasource here prevents the call to
+     * set multipart in kdf_common from throwing an OutOfData exception.
+     * I have no idea why. */
+    (void) ds.Get<bool>();
+
     const std::vector<TF_PSA_Crypto_detail::KDF_input*> inputs = {
         new TF_PSA_Crypto_detail::KDF_input_integer(PSA_KEY_DERIVATION_INPUT_COST, op.iterations),
         new TF_PSA_Crypto_detail::KDF_input_bytes(PSA_KEY_DERIVATION_INPUT_SALT, op.salt),
@@ -1252,7 +1277,8 @@ std::optional<component::Key> TF_PSA_Crypto::OpKDF_PBKDF2(operation::KDF_PBKDF2&
     CF_CHECK_NE(op.iterations, 0);
     CF_CHECK_LTE(op.iterations, PSA_VENDOR_PBKDF2_MAX_ITERATIONS);
 
-    result = kdf_common(op, PSA_ALG_PBKDF2_HMAC(hash_alg), inputs, op.keySize);
+    result = kdf_common(ds, PSA_ALG_PBKDF2_HMAC(hash_alg),
+                        inputs, op.keySize);
 
 end:
     for (auto inp : inputs) {
